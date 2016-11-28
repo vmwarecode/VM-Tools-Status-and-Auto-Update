@@ -13,13 +13,20 @@ param(
  [Parameter(Mandatory=$True, HelpMessage="Enter Password for VM")]
  [AllowEmptyString()] [String]  $vmPassword ,
  [Parameter(Mandatory=$True, HelpMessage="Enter VM Name patten such as 'Win7vm', support '*Win7*'.")]
- [AllowEmptyString()] [String]  $vmName 
+ [AllowEmptyString()] [String]  $vmName ,
+ [Parameter(Mandatory=$True, HelpMessage="Enter Language Code, support 'cn/de/en/es/fr/ja/ko/tw'.")]
+ [AllowEmptyString()] [String]  $vmLang 
+ 
 )
 
 # Log Output
-Start-Transcript Update-VMTools.log -Force
+$myLog = ".\" + $lang + "\" + $MyInvocation.MyCommand.Name.split('.')[0] + $lang + ".log"
+if (-Not (Test-Path $myLog)) {New-Item $myLog -itemtype file -Force}
+Start-Transcript $myLog -Force
 
-$csvdata = import-csv .\config.csv
+$cfgcsv = ".\config.csv"
+if ( $vmLang -ne "") { $cfgcsv = $cfgcsv + $vmLang}
+$csvdata = import-csv $cfgcsv
 if ( $vcServer -eq "" ) { $vcServer= $csvdata.vcServer}
 if ( $vcUser -eq "" ) { $vcUser = $csvdata.vcUser }
 if ( $vcPassword -eq "" ) { $vcPassword = $csvdata.vcPassword }
@@ -51,15 +58,17 @@ else {
 		Update-Tools -VM $myVM.VM -RunAsync
 	}
 
-	Write-Host "We wait for 7200s before power off the VMs which are powered off before tools upgrading."
-	Start-Sleep -s 7200
+	Write-Host "We wait for 300s in case network delay before Tool image attached for upgrading."
+	Start-Sleep -s 300 
+	
 	foreach ($myvm in $myvms) {
+		Wait-Tools -VM $myVM.VM -TimeoutSeconds 600
 		if ($myvm.PowerState -eq "PoweredOff") { 
-			Shutdown-VMGuest -VM $myvm.VM -Confirm:$false
+			Stop-VMGuest -VM $myvm.VM -Confirm:$false
 		}
 	}
 	
-	Write-Host ("Upgrading Done. Checked VMs below `r`n", $allvms, ".`r`nUpgraded VMs below `r`n", $myvms)
+	Write-Host ("Upgrading Done. Checked VMs below `r`n", $allvms, ".`r`nUpgraded VMs below `r`n", $myvms.VM)
 }
 
 # log End

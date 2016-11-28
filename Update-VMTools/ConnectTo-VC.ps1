@@ -7,7 +7,7 @@ param(
  [AllowEmptyString()] [String]  $vcPassword
 )
 
-.\add-snapin.ps1
+.\Initialize-PowerCLIEnvironment.ps1 $true
 
 $csvdata = import-csv .\config.csv
 if ( $vcServer -eq "" ) { $vcServer= $csvdata.vcServer}
